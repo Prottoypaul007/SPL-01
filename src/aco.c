@@ -1,24 +1,31 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <math.h>
 #include <time.h>
 #include <limits.h>
 #include "../include/aco.h"
-
 #define ANTS 20             
 #define ITERATIONS 100      
-#define ALPHA 1.0           
-#define BETA 5.0            
-#define EVAPORATION 0.5    
-#define Q 100.0          
-
+#define ALPHA 1.0           // Pheromone
+#define BETA 5.0            // Distance
+#define EVAPORATION 0.5     
+#define Q 100.0             
+double power(double base, int exp) {
+    double result = 1.0;
+    for (int i = 0; i < exp; i++) {
+        result *= base;
+    }
+    return result;
+}
 double prob(int current, int target, double** pheromones, int** dist) {
     if (dist[current][target] == 0) return 0.0;
     
-    double tau = pheromones[current][target]; 
-    double eta = 1.0 / (double)dist[current][target]; 
+    double tau = pheromones[current][target];         
+    double eta = 1.0 / (double)dist[current][target];
     
-    return pow(tau, ALPHA) * pow(eta, BETA);
+    double tau_factor = tau; 
+    double eta_factor = power(eta, (int)BETA); 
+
+    return tau_factor * eta_factor;
 }
 
 void solveACO(int** matrix, int N, int startNode) {
@@ -27,7 +34,9 @@ void solveACO(int** matrix, int N, int startNode) {
     double** pheromones = (double**)malloc(N * sizeof(double*));
     for (int i = 0; i < N; i++) {
         pheromones[i] = (double*)malloc(N * sizeof(double));
-        for (int j = 0; j < N; j++) pheromones[i][j] = 0.1; 
+        for (int j = 0; j < N; j++) {
+            pheromones[i][j] = 0.1;
+        }
     }
 
     int* bestGlobalPath = (int*)malloc((N + 1) * sizeof(int));
@@ -42,7 +51,7 @@ void solveACO(int** matrix, int N, int startNode) {
 
         for (int k = 0; k < ANTS; k++) {
             antPaths[k] = (int*)malloc((N + 1) * sizeof(int));
-            int* visited = (int*)calloc(N, sizeof(int));
+            int* visited = (int*)calloc(N, sizeof(int)); 
             
             int current = startNode; 
             antPaths[k][0] = current;
@@ -51,8 +60,7 @@ void solveACO(int** matrix, int N, int startNode) {
 
             for (int step = 0; step < N - 1; step++) {
                 double sum = 0.0;
-                
-                for (int j = 0; j < N; j++) {
+                    for (int j = 0; j < N; j++) {
                     if (!visited[j]) {
                         sum += prob(current, j, pheromones, matrix);
                     }
@@ -93,18 +101,21 @@ void solveACO(int** matrix, int N, int startNode) {
 
             free(visited);
         }
+
         for (int i = 0; i < N; i++) {
             for (int j = 0; j < N; j++) {
-                pheromones[i][j] *= (1.0 - EVAPORATION); 
+                pheromones[i][j] = pheromones[i][j] * (1.0 - EVAPORATION); 
             }
         }
+
+     
         for (int k = 0; k < ANTS; k++) {
             double deposit = Q / (double)antCosts[k];
             for (int i = 0; i < N; i++) {
                 int u = antPaths[k][i];
                 int v = antPaths[k][i+1];
-                pheromones[u][v] += deposit;
-                pheromones[v][u] += deposit;
+                pheromones[u][v] = pheromones[u][v] + deposit;
+                pheromones[v][u] = pheromones[v][u] + deposit;
             }
             free(antPaths[k]); 
         }
@@ -117,7 +128,6 @@ void solveACO(int** matrix, int N, int startNode) {
     printf("Path: ");
     for (int i = 0; i < N; i++) printf("%d -> ", bestGlobalPath[i]);
     printf("%d\n", bestGlobalPath[N]);
-
     FILE* f = fopen("solution.csv", "w");
     if (f != NULL) {
         fprintf(f, "%d,", bestGlobalCost);
@@ -128,4 +138,8 @@ void solveACO(int** matrix, int N, int startNode) {
         fprintf(f, ",%d", bestGlobalPath[N]);
         fclose(f);
     }
+    
+    for(int i=0; i<N; i++) free(pheromones[i]);
+    free(pheromones);
+    free(bestGlobalPath);
 }
