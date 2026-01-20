@@ -123,8 +123,8 @@ void solveACO(int** matrix, int N, int startNode) {
         free(antCosts);
     }
 
-    printf("\n--- ACO Result (Heuristic) ---\n");
-    printf("Best Found Cost: %d\n", bestGlobalCost);
+    printf("\nACO Result (Heuristic)-\n");
+    printf("Best found cost: %d\n", bestGlobalCost);
     printf("Path: ");
     for (int i = 0; i < N; i++) printf("%d -> ", bestGlobalPath[i]);
     printf("%d\n", bestGlobalPath[N]);

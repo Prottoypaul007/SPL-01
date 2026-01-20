@@ -7,9 +7,6 @@
 
 int main(int argc, char* argv[]) {
     
-    // argv1-- Input Filename (e.g., "input.txt")
-    // argv2 = Algorithm Mode ("1" or "2")
-    // argv3 = Start Node (e.g., "0", "5")
     
     if (argc < 4) {
         printf("Usage: ./tsp_solver <file> <mode> <start_node>\n");
