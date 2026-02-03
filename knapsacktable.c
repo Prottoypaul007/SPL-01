@@ -21,14 +21,12 @@ int main()
     int leng = sizeof(weight) / sizeof(weight[0]);
     int map[leng][2]; 
     
-    // Copy weights and profits to map
     for (int i = 0; i < leng; i++) 
     {
         map[i][0] = weight[i];
         map[i][1] = profit[i];
     }
 
-    // Sort by weight using bubble sort
     for (int i = 0; i < leng - 1; i++) {
         for (int j = i + 1; j < leng; j++) {
             if (map[i][0] > map[j][0]) {
@@ -42,18 +40,13 @@ int main()
         }
     }
 
-    // Copy sorted values back
     for (int i = 0; i < leng; i++) 
     {
         weight[i] = map[i][0];
         profit[i] = map[i][1];
     }
-    
-    // Fixed: Correct dimension order
-    int knap[leng + 1][total + 1];
-    
-    // Dynamic programming for 0/1 knapsack
-    for(i = 0; i <= leng; i++)
+        int knap[leng + 1][total + 1];
+        for(i = 0; i <= leng; i++)
     {
         for(j = 0; j <= total; j++)
         {
@@ -80,7 +73,7 @@ int main()
     printf("\n");
     
     for(i = 0; i <= leng; i++) {
-        printf("%2d: ", i);
+        printf("%2d ", i);
         for(j = 0; j <= total; j++) {
             printf("%3d ", knap[i][j]);
         }
