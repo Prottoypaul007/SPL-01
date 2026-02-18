@@ -6,7 +6,6 @@ import javax.swing.border.TitledBorder;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.awt.event.*;
-import java.awt.geom.Path2D;
 import java.io.*;
 import java.util.ArrayList;
 import java.util.List;

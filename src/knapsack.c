@@ -3,23 +3,20 @@
 #include "../include/knapsack.h"
 
 // --- HEURISTIC: SMART GREEDY ---
-
 int compareItems(const void* a, const void* b) {
     Item* i1 = (Item*)a;
     Item* i2 = (Item*)b;
-    if (i1->ratio < i2->ratio) return 1; // Descending Order
+    if (i1->ratio < i2->ratio) return 1; 
     return -1;
 }
 
 int solveGreedy(Item* items, int N, int capacity, int* selectedItems) {
-    // 1. Sort by Value/Weight ratio
     qsort(items, N, sizeof(Item), compareItems);
 
     int currentWeight = 0;
     int currentValue = 0;
     int* tempSelected = (int*)calloc(N, sizeof(int));
 
-    // Strategy A: Standard Greedy Fill
     for (int i = 0; i < N; i++) {
         if (currentWeight + items[i].weight <= capacity) {
             currentWeight += items[i].weight;
@@ -28,7 +25,6 @@ int solveGreedy(Item* items, int N, int capacity, int* selectedItems) {
         }
     }
 
-    // Strategy B: Single Best Item (Corner case check)
     int maxSingleVal = 0;
     int bestSingleIdx = -1;
     for (int i = 0; i < N; i++) {
@@ -38,20 +34,15 @@ int solveGreedy(Item* items, int N, int capacity, int* selectedItems) {
         }
     }
 
-    // Compare A vs B
     if (maxSingleVal > currentValue) {
-        printf("\n[Heuristic] 'Single Best Item' strategy beat Standard Greedy.\n");
         currentValue = maxSingleVal;
-        // Reset selection to just that one item
         for(int i=0; i<N; i++) selectedItems[i] = 0;
         if(bestSingleIdx != -1) selectedItems[bestSingleIdx] = 1;
     } else {
-        // Keep Strategy A
         for(int i=0; i<N; i++) selectedItems[i] = tempSelected[i];
     }
     
-    printf("\n[Heuristic] Smart Greedy Result: %d\n", currentValue);
-    
+    // Write greedy result to CSV
     FILE* f = fopen("solution_knapsack.csv", "w");
     if (f) {
         fprintf(f, "%d,", currentValue);
@@ -64,7 +55,6 @@ int solveGreedy(Item* items, int N, int capacity, int* selectedItems) {
 }
 
 // --- EXACT: BRANCH & BOUND ---
-
 typedef struct Node {
     int level;
     int profit;
@@ -96,19 +86,13 @@ double calculateBound(Node u, int n, int capacity, Item* items) {
 int solveKnapsackBB(Item* items, int N, int capacity, int initialLowerBound, int* finalSelection) {
     qsort(items, N, sizeof(Item), compareItems);
 
-    // Limit Queue Size to prevent RAM explosion
     int MAX_NODES = 2000000; 
     Node** queue = (Node**)malloc(MAX_NODES * sizeof(Node*));
-    if (!queue) {
-        printf("[Error] Not enough memory for B&B queue.\n");
-        return initialLowerBound;
-    }
+    if (!queue) return initialLowerBound;
 
     int front = 0, rear = 0;
 
     Node* u = (Node*)malloc(sizeof(Node));
-    Node* v = (Node*)malloc(sizeof(Node));
-    
     u->level = -1;
     u->profit = 0;
     u->weight = 0;
@@ -118,15 +102,21 @@ int solveKnapsackBB(Item* items, int N, int capacity, int initialLowerBound, int
     queue[rear++] = u;
 
     int maxProfit = initialLowerBound; 
-    int* bestPath = (int*)calloc(N, sizeof(int));
+    int* bestPath = (int*)malloc(N * sizeof(int));
+    
+    // ==========================================
+    // CRITICAL HYBRID FIX: Inherit the Heuristic Path
+    // ==========================================
+    for(int i = 0; i < N; i++) {
+        bestPath[i] = finalSelection[i]; 
+    }
+    // ==========================================
 
     printf("[B&B] Solver started. Pruning branches <= %d\n", maxProfit);
 
     while (front < rear) {
-        // Safety Check: Queue Overflow
         if (rear >= MAX_NODES - 2) {
             printf("\n[Safety Stop] Memory limit reached (Queue Full).\n");
-            printf("Returning best found result so far: %d\n", maxProfit);
             break; 
         }
 
@@ -138,42 +128,40 @@ int solveKnapsackBB(Item* items, int N, int capacity, int initialLowerBound, int
             continue;
         }
 
-        // Branch 1: Take Item
-        v = (Node*)malloc(sizeof(Node));
-        v->level = u->level + 1;
-        v->weight = u->weight + items[v->level].weight;
-        v->profit = u->profit + items[v->level].value;
-        v->taken = (int*)malloc(N * sizeof(int));
-        for(int k=0; k<N; k++) v->taken[k] = u->taken[k];
-        v->taken[items[v->level].id] = 1; 
+        Node* v1 = (Node*)malloc(sizeof(Node));
+        v1->level = u->level + 1;
+        v1->weight = u->weight + items[v1->level].weight;
+        v1->profit = u->profit + items[v1->level].value;
+        v1->taken = (int*)malloc(N * sizeof(int));
+        for(int k=0; k<N; k++) v1->taken[k] = u->taken[k];
+        v1->taken[items[v1->level].id] = 1; 
 
-        if (v->weight <= capacity && v->profit > maxProfit) {
-            maxProfit = v->profit;
-            for(int k=0; k<N; k++) bestPath[k] = v->taken[k];
+        if (v1->weight <= capacity && v1->profit > maxProfit) {
+            maxProfit = v1->profit;
+            for(int k=0; k<N; k++) bestPath[k] = v1->taken[k];
             printf("[B&B] New Best Profit: %d\n", maxProfit);
         }
 
-        v->bound = calculateBound(*v, N, capacity, items);
-        if (v->bound > maxProfit) queue[rear++] = v;
-        else { free(v->taken); free(v); }
+        v1->bound = calculateBound(*v1, N, capacity, items);
+        if (v1->bound > maxProfit) queue[rear++] = v1;
+        else { free(v1->taken); free(v1); }
 
-        // Branch 2: Don't Take Item
-        v = (Node*)malloc(sizeof(Node));
-        v->level = u->level + 1;
-        v->weight = u->weight;
-        v->profit = u->profit;
-        v->taken = (int*)malloc(N * sizeof(int));
-        for(int k=0; k<N; k++) v->taken[k] = u->taken[k]; // Copy history
+        Node* v2 = (Node*)malloc(sizeof(Node));
+        v2->level = u->level + 1;
+        v2->weight = u->weight;
+        v2->profit = u->profit;
+        v2->taken = (int*)malloc(N * sizeof(int));
+        for(int k=0; k<N; k++) v2->taken[k] = u->taken[k]; 
 
-        v->bound = calculateBound(*v, N, capacity, items);
-        if (v->bound > maxProfit) queue[rear++] = v;
-        else { free(v->taken); free(v); }
+        v2->bound = calculateBound(*v2, N, capacity, items);
+        if (v2->bound > maxProfit) queue[rear++] = v2;
+        else { free(v2->taken); free(v2); }
 
         free(u->taken);
         free(u);
     }
 
-    // Write Final Result
+    // Overwrite CSV with best result (either Heuristic or new B&B path)
     FILE* f = fopen("solution_knapsack.csv", "w");
     if (f) {
         fprintf(f, "%d,", maxProfit);
@@ -181,7 +169,6 @@ int solveKnapsackBB(Item* items, int N, int capacity, int initialLowerBound, int
         fclose(f);
     }
 
-    // Cleanup (Simplified for project scope)
     free(queue);
     free(bestPath);
     return maxProfit;

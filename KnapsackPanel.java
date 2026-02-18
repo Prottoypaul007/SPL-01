@@ -12,7 +12,7 @@ public class KnapsackPanel extends JPanel {
     private JTextArea inputArea, resultArea;
     private JLabel statusLabel, profitLabel, weightLabel, timeLabel, efficiencyLabel;
     
-    // --- NEW: Class-level labels to prevent crashing during updates ---
+    // Class-level labels to prevent crashing during updates
     private JLabel allItemsLabel, selectedItemsLabel; 
     
     private JComboBox<String> algoSelector;
@@ -243,7 +243,6 @@ public class KnapsackPanel extends JPanel {
         JPanel panel = new JPanel(new BorderLayout(10, 10));
         panel.setBorder(new EmptyBorder(10, 10, 10, 10));
 
-        // --- NEW: Save reference to label ---
         allItemsLabel = new JLabel("All Items (N = 0)");
         allItemsLabel.setFont(HEADER_FONT);
         panel.add(allItemsLabel, BorderLayout.NORTH);
@@ -305,7 +304,6 @@ public class KnapsackPanel extends JPanel {
         titleLabel.setFont(HEADER_FONT);
         headerPanel.add(titleLabel);
         
-        // --- NEW: Save reference to labels to update them safely ---
         selectedItemsLabel = new JLabel("No items selected");
         selectedItemsLabel.setFont(MAIN_FONT);
         headerPanel.add(selectedItemsLabel);
@@ -476,9 +474,9 @@ public class KnapsackPanel extends JPanel {
             tabbedPane.setSelectedIndex(3);
             
         } catch(Exception e) { 
-            e.printStackTrace(); // Print stack trace to see what actually happened
+            e.printStackTrace(); 
             JOptionPane.showMessageDialog(this, 
-                "Invalid input format (Check Console for Details)", 
+                "Invalid input format", 
                 "Input Error", 
                 JOptionPane.ERROR_MESSAGE);
         }
@@ -566,7 +564,6 @@ public class KnapsackPanel extends JPanel {
                     SwingUtilities.invokeLater(() -> {
                         statusLabel.setText("Backend failed - solution file not found");
                         statusLabel.setForeground(Color.RED);
-                        progressBar.setIndeterminate(false);
                     });
                     return;
                 }
@@ -575,11 +572,10 @@ public class KnapsackPanel extends JPanel {
                 String resLine = br.readLine();
                 br.close();
 
-                if (resLine == null) {
+                if (resLine == null || resLine.trim().isEmpty()) {
                     SwingUtilities.invokeLater(() -> {
-                        statusLabel.setText("No solution found");
+                        statusLabel.setText("No solution found (Empty backend output)");
                         statusLabel.setForeground(Color.RED);
-                        progressBar.setIndeterminate(false);
                     });
                     return;
                 }
@@ -602,8 +598,6 @@ public class KnapsackPanel extends JPanel {
                     updateResults();
                     statusLabel.setText("✓ Solution found successfully!");
                     statusLabel.setForeground(SUCCESS_COLOR);
-                    progressBar.setIndeterminate(false);
-                    
                     tabbedPane.setSelectedIndex(0);
                 });
                 
@@ -612,6 +606,10 @@ public class KnapsackPanel extends JPanel {
                 SwingUtilities.invokeLater(() -> {
                     statusLabel.setText("Error during execution");
                     statusLabel.setForeground(Color.RED);
+                });
+            } finally {
+                // Guaranteed to run, turns off the progress bar safely
+                SwingUtilities.invokeLater(() -> {
                     progressBar.setIndeterminate(false);
                 });
             }
@@ -620,13 +618,12 @@ public class KnapsackPanel extends JPanel {
 
     private void parseInputArea() {
         String[] lines = inputArea.getText().split("\n");
-        // Ensure arrays are initialized
         values = new int[N];
         weights = new int[N];
         
         int count = 0;
         for(String line : lines) {
-            if (line.trim().isEmpty()) continue; // Skip empty lines
+            if (line.trim().isEmpty()) continue; 
             if (count >= N) break;
             
             String[] parts = line.trim().split("\\s+");
@@ -636,7 +633,6 @@ public class KnapsackPanel extends JPanel {
                     weights[count] = Integer.parseInt(parts[1]);
                     count++;
                 } catch (NumberFormatException ignored) {
-                    // Skip malformed lines
                 }
             }
         }
@@ -665,7 +661,6 @@ public class KnapsackPanel extends JPanel {
             return;
         }
         
-        // --- SAFE UPDATE: Use class reference instead of component tree traversal ---
         if (allItemsLabel != null) {
             allItemsLabel.setText("All Items (N = " + N + ")");
         }
@@ -712,11 +707,9 @@ public class KnapsackPanel extends JPanel {
             }
         }
         
-        // --- SAFE UPDATE: Use class reference ---
         if (selectedItemsLabel != null) {
             selectedItemsLabel.setText(selectedCount + " items selected (out of " + N + " total)");
             
-            // Update the sibling label (summaryLabel2) if needed
             Container parent = selectedItemsLabel.getParent();
             if (parent != null && parent.getComponentCount() > 2 && parent.getComponent(2) instanceof JLabel) {
                  ((JLabel)parent.getComponent(2)).setText(
