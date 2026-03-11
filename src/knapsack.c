@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include "../include/knapsack.h"
 
-// --- HEURISTIC: SMART GREEDY ---
+// heuristic ta smart greedy er mto kaj korbe
 int compareItems(const void* a, const void* b) {
     Item* i1 = (Item*)a;
     Item* i2 = (Item*)b;
