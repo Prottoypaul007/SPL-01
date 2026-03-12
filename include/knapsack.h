@@ -8,7 +8,7 @@ typedef struct {
     double ratio;
 } Item;
 
-// Heuristic: Returns the profit found
+// Heuristic: profit ferot dibe
 int solveGreedy(Item* items, int N, int capacity, int* selectedItems);
 
 // Exact/Hybrid: Returns optimal profit, accepts initialLowerBound (from Heuristic)
