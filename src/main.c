@@ -73,7 +73,7 @@ int main(int argc, char* argv[]) {
             }
         } 
         else {
-            // Safe to run B&B
+            // b&b akhn crush korbe na
             printf("--- Phase 2: Running Exact Solver with Cutoff %d ---\n", bestAcoLimit);
             solveTSP(matrix, N, startNode, bestAcoLimit);
         }
