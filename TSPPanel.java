@@ -1,9 +1,7 @@
 import javax.swing.*;
-import javax.swing.border.CompoundBorder;
-import javax.swing.border.EmptyBorder;
-import javax.swing.border.LineBorder;
-import javax.swing.border.TitledBorder;
+import javax.swing.border.*;
 import javax.swing.table.DefaultTableModel;
+import javax.swing.table.JTableHeader;
 import java.awt.*;
 import java.awt.event.*;
 import java.io.*;
@@ -29,19 +27,31 @@ public class TSPPanel extends JPanel {
     private int solutionCost = -1;
     private long executionTime = 0;
     
-    // Fonts & Colors
+    // Design
     private final Font MAIN_FONT = new Font("Segoe UI", Font.PLAIN, 14);
     private final Font HEADER_FONT = new Font("Segoe UI", Font.BOLD, 16);
-    private final Color PRIMARY_COLOR = new Color(0, 120, 215);
-    private final Color SUCCESS_COLOR = new Color(40, 167, 69);
+    private final Font TITLE_FONT = new Font("Segoe UI", Font.BOLD, 20);
+    private final Color ACCENT_COLOR = new Color(0, 150, 215);
+    private final Color SUCCESS_COLOR = new Color(76, 175, 80);
     private final Color SIDEBAR_BG = new Color(245, 245, 245);
-    
-    public TSPPanel() {
+    private final Color TABLE_HEADER_BG = new Color(33, 150, 243);
+    private final Color TABLE_HEADER_FG = Color.WHITE;
+    private final Color STATUS_BG = new Color(240, 240, 245);
+    private final Color SECTION_BORDER = new Color(200, 200, 200);
+      public TSPPanel() {
         setLayout(new BorderLayout(10, 10));
         
         // --- LEFT SIDEBAR (CONTROLS) ---
         JPanel leftPanel = createControlPanel();
-        add(leftPanel, BorderLayout.WEST);
+        
+        // SCROLL PANE: Ensures UI never gets cut off vertically
+        JScrollPane leftScroll = new JScrollPane(leftPanel);
+        leftScroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+        leftScroll.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
+        leftScroll.setBorder(null);
+        leftScroll.setPreferredSize(new Dimension(420, 0));
+        
+        add(leftScroll, BorderLayout.WEST);
         
         // --- CENTER (TABBED PANE) ---
         tabbedPane = new JTabbedPane();
@@ -65,23 +75,20 @@ public class TSPPanel extends JPanel {
         JPanel statusBar = createStatusBar();
         add(statusBar, BorderLayout.SOUTH);
     }
-    
-    private JPanel createControlPanel() {
+      private JPanel createControlPanel() {
         JPanel leftPanel = new JPanel();
         leftPanel.setLayout(new BoxLayout(leftPanel, BoxLayout.Y_AXIS));
         leftPanel.setBackground(SIDEBAR_BG);
         leftPanel.setBorder(new CompoundBorder(
-            new LineBorder(Color.LIGHT_GRAY, 1),
-            new EmptyBorder(20, 20, 20, 20)
-        ));
-        leftPanel.setPreferredSize(new Dimension(350, 0));
+            new LineBorder(SECTION_BORDER, 1),
+            new EmptyBorder(15, 15, 15, 15)));
         
         // Title
         JLabel controlTitle = new JLabel("TSP Solver Configuration");
-        controlTitle.setFont(new Font("Segoe UI", Font.BOLD, 20));
+        controlTitle.setFont(TITLE_FONT);
         controlTitle.setAlignmentX(Component.LEFT_ALIGNMENT);
         leftPanel.add(controlTitle);
-        leftPanel.add(Box.createVerticalStrut(20));
+        leftPanel.add(Box.createVerticalStrut(15));
         
         // Input Section
         JPanel inputSection = createTitledSection("Problem Setup");
@@ -89,18 +96,19 @@ public class TSPPanel extends JPanel {
         inputSection.add(createLabel("Number of Cities (N):"));
         nInput = createTextField("12");
         inputSection.add(nInput);
-        inputSection.add(Box.createVerticalStrut(10));
+        inputSection.add(Box.createVerticalStrut(8));
         
         inputSection.add(createLabel("Start Node (0 to N-1):"));
         startNodeInput = createTextField("0");
         inputSection.add(startNodeInput);
-        inputSection.add(Box.createVerticalStrut(10));
+        inputSection.add(Box.createVerticalStrut(8));
         
         inputSection.add(createLabel("Algorithm Strategy:"));
+        
         String[] algorithms = {
             "Exact (Branch & Bound)",
             "Heuristic (ACO)",
-            "Hybrid (Combined)"
+            "Massive Scale (Clustered Hybrid)"
         };
         algoSelector = new JComboBox<>(algorithms);
         algoSelector.setFont(MAIN_FONT);
@@ -109,57 +117,52 @@ public class TSPPanel extends JPanel {
         
         leftPanel.add(inputSection);
         leftPanel.add(Box.createVerticalStrut(15));
-        
-        // Action Buttons
-        JPanel buttonPanel = new JPanel();
-        buttonPanel.setLayout(new BoxLayout(buttonPanel, BoxLayout.Y_AXIS));
-        buttonPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
-        buttonPanel.setOpaque(false);
-        
+          // Action Buttons
         JButton genBtn = createButton("🗺️ Generate Random Map", new Color(108, 117, 125));
         genBtn.addActionListener(e -> generateRandomMatrix());
-        buttonPanel.add(genBtn);
-        buttonPanel.add(Box.createVerticalStrut(10));
+        leftPanel.add(genBtn);
+        leftPanel.add(Box.createVerticalStrut(8));
         
-        JButton solveBtn = createButton("🚀 SOLVE TSP", PRIMARY_COLOR);
+        JButton solveBtn = createButton("🚀 SOLVE TSP", ACCENT_COLOR);
         solveBtn.addActionListener(e -> solveTSP());
-        buttonPanel.add(solveBtn);
-        buttonPanel.add(Box.createVerticalStrut(10));
+        leftPanel.add(solveBtn);
+        leftPanel.add(Box.createVerticalStrut(8));
         
         JButton exportBtn = createButton("💾 Export Results", new Color(23, 162, 184));
         exportBtn.addActionListener(e -> exportResults());
-        buttonPanel.add(exportBtn);
-        buttonPanel.add(Box.createVerticalStrut(10));
+        leftPanel.add(exportBtn);
+        leftPanel.add(Box.createVerticalStrut(8));
         
         JButton clearBtn = createButton("🗑️ Clear All", new Color(220, 53, 69));
         clearBtn.addActionListener(e -> clearAll());
-        buttonPanel.add(clearBtn);
-        
-        leftPanel.add(buttonPanel);
-        leftPanel.add(Box.createVerticalStrut(20));
+        leftPanel.add(clearBtn);
+        leftPanel.add(Box.createVerticalStrut(12));
         
         // Progress Bar
         progressBar = new JProgressBar();
         progressBar.setIndeterminate(false);
         progressBar.setStringPainted(true);
+        progressBar.setFont(MAIN_FONT);
         progressBar.setMaximumSize(new Dimension(Integer.MAX_VALUE, 25));
-        progressBar.setAlignmentX(Component.LEFT_ALIGNMENT);
         leftPanel.add(progressBar);
-        leftPanel.add(Box.createVerticalStrut(15));
+        leftPanel.add(Box.createVerticalStrut(12));
         
         // Results Summary
         JPanel resultsPanel = createTitledSection("Results Summary");
+        resultsPanel.setBorder(new CompoundBorder(
+            new TitledBorder(new LineBorder(ACCENT_COLOR, 2), "Results Summary", TitledBorder.LEFT, TitledBorder.TOP, HEADER_FONT, ACCENT_COLOR),
+            new EmptyBorder(10, 10, 10, 10)));
         
         costLabel = new JLabel("Total Cost: --");
         costLabel.setFont(HEADER_FONT);
-        costLabel.setForeground(PRIMARY_COLOR);
+        costLabel.setForeground(ACCENT_COLOR);
         resultsPanel.add(costLabel);
-        resultsPanel.add(Box.createVerticalStrut(5));
+        resultsPanel.add(Box.createVerticalStrut(6));
         
         nodesLabel = new JLabel("Cities Visited: --");
         nodesLabel.setFont(MAIN_FONT);
         resultsPanel.add(nodesLabel);
-        resultsPanel.add(Box.createVerticalStrut(5));
+        resultsPanel.add(Box.createVerticalStrut(4));
         
         timeLabel = new JLabel("Execution Time: --");
         timeLabel.setFont(MAIN_FONT);
@@ -170,8 +173,7 @@ public class TSPPanel extends JPanel {
         
         return leftPanel;
     }
-    
-    private JPanel createGraphTab() {
+      private JPanel createGraphTab() {
         JPanel panel = new JPanel(new BorderLayout(5, 5));
         panel.setBackground(Color.WHITE);
         
@@ -186,7 +188,7 @@ public class TSPPanel extends JPanel {
         // Graph Controls
         JPanel controlPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
         controlPanel.setBackground(new Color(250, 250, 250));
-        controlPanel.setBorder(new EmptyBorder(5, 5, 5, 5));
+        controlPanel.setBorder(new EmptyBorder(10, 10, 10, 10));
         
         controlPanel.add(new JLabel("Zoom:"));
         zoomSlider = new JSlider(50, 200, 100);
@@ -217,10 +219,10 @@ public class TSPPanel extends JPanel {
         
         return panel;
     }
-    
-    private JPanel createPathDetailsTab() {
+      private JPanel createPathDetailsTab() {
         JPanel panel = new JPanel(new BorderLayout(10, 10));
-        panel.setBorder(new EmptyBorder(10, 10, 10, 10));
+        panel.setBorder(new EmptyBorder(15, 15, 15, 15));
+        panel.setBackground(Color.WHITE);
         
         // Path as text area (formatted)
         pathArea = new JTextArea(8, 60);
@@ -229,23 +231,20 @@ public class TSPPanel extends JPanel {
         pathArea.setLineWrap(true);
         pathArea.setWrapStyleWord(false);
         pathArea.setBackground(new Color(250, 250, 250));
+        pathArea.setMargin(new Insets(10, 10, 10, 10));
         JScrollPane pathScroll = new JScrollPane(pathArea);
         pathScroll.setBorder(BorderFactory.createTitledBorder("Path Sequence"));
         panel.add(pathScroll, BorderLayout.NORTH);
         
         // Path as table (for large N)
-        String[] columnNames = {"Step", "From City", "To City", "Distance"};
-        DefaultTableModel tableModel = new DefaultTableModel(columnNames, 0) {
+        String[] columnNames = {"Step", "From City", "To City", "Distance"};        DefaultTableModel tableModel = new DefaultTableModel(columnNames, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
                 return false;
             }
         };
         pathTable = new JTable(tableModel);
-        pathTable.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-        pathTable.setRowHeight(25);
-        pathTable.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 13));
-        pathTable.setAutoResizeMode(JTable.AUTO_RESIZE_ALL_COLUMNS);
+        styleTable(pathTable);
         
         JScrollPane tableScroll = new JScrollPane(pathTable);
         tableScroll.setBorder(BorderFactory.createTitledBorder("Step-by-Step Path"));
@@ -253,18 +252,20 @@ public class TSPPanel extends JPanel {
         
         return panel;
     }
-    
-    private JPanel createMatrixTab() {
+      private JPanel createMatrixTab() {
         JPanel panel = new JPanel(new BorderLayout(5, 5));
-        panel.setBorder(new EmptyBorder(10, 10, 10, 10));
+        panel.setBorder(new EmptyBorder(15, 15, 15, 15));
+        panel.setBackground(Color.WHITE);
         
         JLabel infoLabel = new JLabel("Distance Matrix (editable - modify before solving)");
         infoLabel.setFont(HEADER_FONT);
         panel.add(infoLabel, BorderLayout.NORTH);
         
         matrixArea = new JTextArea(20, 80);
-        matrixArea.setFont(new Font("Consolas", Font.PLAIN, 12));
+        matrixArea.setFont(new Font("Courier New", Font.PLAIN, 12));
         matrixArea.setTabSize(4);
+        matrixArea.setLineWrap(false);
+        matrixArea.setMargin(new Insets(10, 10, 10, 10));
         JScrollPane matrixScroll = new JScrollPane(matrixArea);
         matrixScroll.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_ALWAYS);
         matrixScroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
@@ -272,37 +273,29 @@ public class TSPPanel extends JPanel {
         
         return panel;
     }
-    
-    private JPanel createStatusBar() {
+      private JPanel createStatusBar() {
         JPanel statusBar = new JPanel(new BorderLayout());
+        statusBar.setBackground(STATUS_BG);
         statusBar.setBorder(new CompoundBorder(
-            new LineBorder(Color.LIGHT_GRAY, 1, true),
-            new EmptyBorder(5, 10, 5, 10)
-        ));
-        statusBar.setBackground(new Color(240, 240, 240));
+            new MatteBorder(1, 0, 0, 0, SECTION_BORDER),
+            new EmptyBorder(8, 15, 8, 15)));
         
         statusLabel = new JLabel("Ready");
-        statusLabel.setFont(new Font("Segoe UI", Font.BOLD, 12));
-        statusLabel.setForeground(new Color(0, 100, 0));
+        statusLabel.setFont(MAIN_FONT);
+        statusLabel.setForeground(new Color(60, 60, 60));
         statusBar.add(statusLabel, BorderLayout.WEST);
         
         return statusBar;
     }
     
     private JPanel createTitledSection(String title) {
-        JPanel panel = new JPanel();
-        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
-        panel.setBorder(BorderFactory.createTitledBorder(
-            BorderFactory.createLineBorder(Color.LIGHT_GRAY),
-            title,
-            TitledBorder.LEFT,
-            TitledBorder.TOP,
-            new Font("Segoe UI", Font.BOLD, 14)
-        ));
-        panel.setAlignmentX(Component.LEFT_ALIGNMENT);
-        panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, Integer.MAX_VALUE));
-        panel.setBackground(SIDEBAR_BG);
-        return panel;
+        JPanel p = new JPanel();
+        p.setLayout(new BoxLayout(p, BoxLayout.Y_AXIS));
+        p.setBorder(new CompoundBorder(
+            new TitledBorder(new LineBorder(SECTION_BORDER, 1), title, TitledBorder.LEFT, TitledBorder.TOP, HEADER_FONT),
+            new EmptyBorder(10, 10, 10, 10)));
+        p.setBackground(SIDEBAR_BG);
+        return p;
     }
     
     private JLabel createLabel(String text) {
@@ -316,19 +309,33 @@ public class TSPPanel extends JPanel {
         JTextField tf = new JTextField(text);
         tf.setFont(MAIN_FONT);
         tf.setMaximumSize(new Dimension(Integer.MAX_VALUE, 35));
+        tf.setAlignmentX(Component.LEFT_ALIGNMENT);
         return tf;
     }
-    
-    private JButton createButton(String text, Color bg) {
+      private JButton createButton(String text, Color bg) {
         JButton btn = new JButton(text);
         btn.setFont(new Font("Segoe UI", Font.BOLD, 13));
         btn.setBackground(bg);
         btn.setForeground(Color.WHITE);
         btn.setFocusPainted(false);
+        btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btn.setBorder(BorderFactory.createEmptyBorder(8, 15, 8, 15));
         btn.setAlignmentX(Component.LEFT_ALIGNMENT);
         btn.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
-        btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
         return btn;
+    }
+
+    private void styleTable(JTable table) {
+        table.setFont(MAIN_FONT);
+        table.setRowHeight(28);
+        table.setGridColor(new Color(220, 220, 220));
+        table.setShowGrid(true);
+        
+        JTableHeader header = table.getTableHeader();
+        header.setBackground(TABLE_HEADER_BG);
+        header.setForeground(TABLE_HEADER_FG);
+        header.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        header.setPreferredSize(new Dimension(0, 35));
     }
     
     private void generateRandomMatrix() {
@@ -342,22 +349,36 @@ public class TSPPanel extends JPanel {
                 return;
             }
             
-            StringBuilder sb = new StringBuilder();
+            // GENERATE EUCLIDEAN MAP (Real-World Physics)
+            int[] xCoords = new int[N];
+            int[] yCoords = new int[N];
             Random rand = new Random();
             
+            // 1. Scatter cities randomly on a 200x200 grid
+            for (int i = 0; i < N; i++) {
+                xCoords[i] = rand.nextInt(200);
+                yCoords[i] = rand.nextInt(200);
+            }
+            
+            // 2. Calculate true geometric distances (Pythagorean theorem)
+            StringBuilder sb = new StringBuilder();
             for (int i = 0; i < N; i++) {
                 for (int j = 0; j < N; j++) {
                     if (i == j) {
                         sb.append(String.format("%4d ", 0));
                     } else {
-                        sb.append(String.format("%4d ", rand.nextInt(90) + 10));
+                        double dx = xCoords[i] - xCoords[j];
+                        double dy = yCoords[i] - yCoords[j];
+                        int dist = (int) Math.round(Math.sqrt(dx*dx + dy*dy));
+                        if (dist == 0) dist = 1; // Prevent 0 distance for distinct nodes
+                        sb.append(String.format("%4d ", dist));
                     }
                 }
                 sb.append("\n");
             }
             
             matrixArea.setText(sb.toString());
-            statusLabel.setText("Map generated with " + N + " cities");
+            statusLabel.setText("Geometric map generated with " + N + " cities");
             statusLabel.setForeground(SUCCESS_COLOR);
             
             // Clear previous results
@@ -404,23 +425,17 @@ public class TSPPanel extends JPanel {
             return;
         }
         
-        // Auto-switch algorithm
+        // UPDATED: Auto-switch algorithm logic.
+        // If Exact is selected and N > 22, jump directly to Clustered Hybrid (Index 2)
         int selectedIndex = algoSelector.getSelectedIndex();
         if (selectedIndex == 0) {
-            if (N > 20) {
+            if (N > 22) {
                 JOptionPane.showMessageDialog(this,
-                    "Input size (N=" + N + ") is too large for Exact methods.\n" +
-                    "Switching to Heuristic (ACO) to prevent crash.",
+                    "Input size (N=" + N + ") is massive.\n" +
+                    "Switching to Massive Scale Hybrid to prevent crash.",
                     "Auto-Switch Warning",
                     JOptionPane.WARNING_MESSAGE);
-                algoSelector.setSelectedIndex(1);
-            } else if (N > 14) {
-                JOptionPane.showMessageDialog(this,
-                    "Input size (N=" + N + ") is slow for pure Exact.\n" +
-                    "Switching to Hybrid (ACO + B&B) for better performance.",
-                    "Auto-Switch Info",
-                    JOptionPane.INFORMATION_MESSAGE);
-                algoSelector.setSelectedIndex(2);
+                algoSelector.setSelectedIndex(2); // Index 2 is Mode 3 (Clustered Hybrid)
             }
         }
         
@@ -430,16 +445,17 @@ public class TSPPanel extends JPanel {
         new Thread(() -> {
             try {
                 long startTime = System.currentTimeMillis();
-                
-                SwingUtilities.invokeLater(() -> {
+                  SwingUtilities.invokeLater(() -> {
                     statusLabel.setText("Solving TSP...");
-                    statusLabel.setForeground(PRIMARY_COLOR);
+                    statusLabel.setForeground(ACCENT_COLOR);
                     progressBar.setIndeterminate(true);
                 });
                 
                 saveInputToFile("input.txt");
                 
-                ProcessBuilder pb = new ProcessBuilder("tsp_solver.exe", "input.txt", mode, startNodeStr);
+                // Cross-platform EXE extension handler
+                String exeExt = System.getProperty("os.name").toLowerCase().contains("win") ? ".exe" : "";
+                ProcessBuilder pb = new ProcessBuilder("tsp_solver" + exeExt, "input.txt", mode, startNodeStr);
                 pb.redirectErrorStream(true);
                 Process process = pb.start();
                 
@@ -447,17 +463,6 @@ public class TSPPanel extends JPanel {
                 String line;
                 while ((line = reader.readLine()) != null) {
                     System.out.println("[Backend]: " + line);
-                    
-                    if (line.contains("[Safety Stop]")) {
-                        SwingUtilities.invokeLater(() ->
-                            JOptionPane.showMessageDialog(this,
-                                "Input (N=" + N + ") is too large for Exact B&B.\n" +
-                                "Hybrid Mode skipped the exact phase to protect RAM.\n" +
-                                "Showing Optimized Heuristic Result.",
-                                "Safety Triggered",
-                                JOptionPane.INFORMATION_MESSAGE)
-                        );
-                    }
                 }
                 
                 process.waitFor();

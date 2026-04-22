@@ -1,6 +1,7 @@
 #ifndef KNAPSACK_H
 #define KNAPSACK_H
 
+// 1. Define the struct first
 typedef struct {
     int id;
     int value;
@@ -8,10 +9,16 @@ typedef struct {
     double ratio;
 } Item;
 
-// Heuristic: profit ferot dibe
+// 2. Align the prototypes to use Item*
+Item* parseKnapsackInput(const char* filename, int* N, int* W);
+
 int solveGreedy(Item* items, int N, int capacity, int* selectedItems);
 
-// Exact/Hybrid: Returns optimal profit, accepts initialLowerBound (from Heuristic)
-int solveKnapsackBB(Item* items, int N, int capacity, int initialLowerBound, int* selectedItems);
+int solveKnapsackBB(Item* items, int N, int capacity, int initialLowerBound, int* finalSelection);
+
+// ADD THIS NEW LINE:
+int solveKnapsack_AdvancedHybrid(Item* items, int N, int capacity, int* finalSelection);
+
+void writeKnapsackSolution(const char* filename, int profit, int* selection, int N);
 
 #endif
