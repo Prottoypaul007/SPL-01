@@ -3,7 +3,7 @@
 #include <string.h>
 #include "../include/knapsack.h"
 
-// Helper for sorting items by value-to-weight ratio (Density)
+// value/weigh e sorting
 int compareItems(const void* a, const void* b) {
     Item* i1 = (Item*)a;
     Item* i2 = (Item*)b;
@@ -11,10 +11,6 @@ int compareItems(const void* a, const void* b) {
     if (i1->ratio > i2->ratio) return -1;
     return 0;
 }
-
-// ==========================================
-// FILE PARSER
-// ==========================================
 Item* parseKnapsackInput(const char* filename, int* N, int* W) {
     FILE* file = fopen(filename, "r");
     if (!file) {
@@ -26,7 +22,6 @@ Item* parseKnapsackInput(const char* filename, int* N, int* W) {
         fclose(file);
         return NULL;
     }
-
     Item* items = (Item*)malloc((*N) * sizeof(Item));
     for (int i = 0; i < *N; i++) {
         items[i].id = i; 
@@ -39,10 +34,6 @@ Item* parseKnapsackInput(const char* filename, int* N, int* W) {
     fclose(file);
     return items;
 }
-
-// ==========================================
-// MODE 2: GREEDY DENSITY HEURISTIC
-// ==========================================
 int solveGreedy(Item* items, int N, int capacity, int* selectedItems) {
     qsort(items, N, sizeof(Item), compareItems);
 
@@ -78,10 +69,6 @@ int solveGreedy(Item* items, int N, int capacity, int* selectedItems) {
     free(tempSelected);
     return currentValue;
 }
-
-// ==========================================
-// MODE 1 & 3: BRANCH & BOUND (EXACT/HYBRID)
-// ==========================================
 typedef struct Node {
     int level;
     int profit;
@@ -196,18 +183,12 @@ int solveKnapsackBB(Item* items, int N, int capacity, int initialLowerBound, int
     free(bestPath);
     return maxProfit;
 }
-// ==========================================
-// UPGRADED MODE 3: CORE-PROBLEM HYBRID
-// ==========================================
 int solveKnapsack_AdvancedHybrid(Item* items, int N, int capacity, int* finalSelection) {
-    // 1. Sort all items by density
     qsort(items, N, sizeof(Item), compareItems);
 
     int currentWeight = 0;
     int baseProfit = 0;
     int breakIndex = -1;
-
-    // 2. Find the Break Item (where the bag overflows)
     for (int i = 0; i < N; i++) {
         if (currentWeight + items[i].weight > capacity) {
             breakIndex = i;
@@ -217,17 +198,11 @@ int solveKnapsack_AdvancedHybrid(Item* items, int N, int capacity, int* finalSel
         baseProfit += items[i].value;
         finalSelection[items[i].id] = 1; 
     }
-
-    // If it never broke, the Greedy solution is 100% perfect
     if (breakIndex == -1) return baseProfit;
-
-    // 3. Isolate a Core of 40 items (20 before, 20 after the break)
     int CORE_RADIUS = 20; 
     int coreStart = (breakIndex - CORE_RADIUS < 0) ? 0 : breakIndex - CORE_RADIUS;
     int coreEnd = (breakIndex + CORE_RADIUS >= N) ? N - 1 : breakIndex + CORE_RADIUS;
     int coreSize = coreEnd - coreStart + 1;
-
-    // 4. Calculate exactly what we permanently locked in BEFORE the core
     int remainingCapacity = capacity;
     int lockedProfit = 0;
     for (int i = 0; i < coreStart; i++) {
@@ -235,21 +210,16 @@ int solveKnapsack_AdvancedHybrid(Item* items, int N, int capacity, int* finalSel
         lockedProfit += items[i].value;
     }
     
-    // Clear the selection status for the core items so B&B starts fresh on them
     for (int i = coreStart; i <= coreEnd; i++) {
         finalSelection[items[i].id] = 0; 
     }
 
-    // 5. Feed ONLY the tiny core slice to your exact Branch & Bound solver
     Item* coreItems = &items[coreStart]; 
     int* coreSelection = (int*)calloc(coreSize, sizeof(int));
     
     printf("[Core Engine] Massive dataset (N=%d) reduced down to Core Size=%d\n", N, coreSize);
     
-    // Pass 0 as the initial lower bound since we are only solving a small isolated chunk
     int coreProfit = solveKnapsackBB(coreItems, coreSize, remainingCapacity, 0, coreSelection);
-
-    // 6. Stitch the perfect core back into the global solution
     for (int i = 0; i < coreSize; i++) {
         if (coreSelection[i] == 1) {
             finalSelection[coreItems[i].id] = 1;
@@ -267,10 +237,8 @@ void writeKnapsackSolution(const char* filename, int profit, int* selection, int
             fprintf(f, "%d%s", selection[i], (i == N - 1) ? "" : ",");
         }
         fclose(f);
-        // Tell Java that the file is safely on the hard drive
         printf("[Backend] SUCCESS: Saved results to %s\n", filename);
     } else {
-        // Scream if Windows blocks the file creation
         printf("[Backend] ERROR: Could not write to %s! Is it open in Excel?\n", filename);
     }
 }
