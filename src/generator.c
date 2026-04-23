@@ -6,7 +6,7 @@
 void generateRandomTest(int N, const char* filename, int isSymmetric) {
     FILE* file = fopen(filename, "w");
     if (file == NULL) {
-        fprintf(stderr, "Error: Could not write to file '%s'\n", filename);
+        fprintf(stderr, "Error: Could not write to file '%s'\n", filename); //stderr=a pre-defined output stream used specifically for outputting error messages and diagnostics
         return;
     }
 
@@ -15,7 +15,7 @@ void generateRandomTest(int N, const char* filename, int isSymmetric) {
     srand(time(NULL));
 
     int** mat = (int**)malloc(N * sizeof(int*));
-    for(int i=0; i<N; i++) mat[i] = (int*)malloc(N * sizeof(int));
+    for(int i=0; i<N; i++) mat[i] = (int*)malloc(N * sizeof(int)); //creating 2d space
 
     for (int i = 0; i < N; i++) {
         for (int j = 0; j < N; j++) {

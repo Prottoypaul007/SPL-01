@@ -38,13 +38,13 @@ public class TSPPanel extends JPanel {
     private final Color TABLE_HEADER_FG = Color.WHITE;
     private final Color STATUS_BG = new Color(240, 240, 245);
     private final Color SECTION_BORDER = new Color(200, 200, 200);
-      public TSPPanel() {
+
+    public TSPPanel() {
         setLayout(new BorderLayout(10, 10));
         
         // --- LEFT SIDEBAR (CONTROLS) ---
         JPanel leftPanel = createControlPanel();
         
-        // SCROLL PANE: Ensures UI never gets cut off vertically
         JScrollPane leftScroll = new JScrollPane(leftPanel);
         leftScroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
         leftScroll.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
@@ -57,15 +57,12 @@ public class TSPPanel extends JPanel {
         tabbedPane = new JTabbedPane();
         tabbedPane.setFont(MAIN_FONT);
         
-        // Tab 1: Graph Visualization
         JPanel graphTab = createGraphTab();
         tabbedPane.addTab("Visualization", new ImageIcon(), graphTab, "Interactive graph view");
         
-        // Tab 2: Path Details
         JPanel pathTab = createPathDetailsTab();
         tabbedPane.addTab("Path Details", new ImageIcon(), pathTab, "Detailed path information");
         
-        // Tab 3: Matrix View
         JPanel matrixTab = createMatrixTab();
         tabbedPane.addTab("Distance Matrix", new ImageIcon(), matrixTab, "View/Edit distance matrix");
         
@@ -75,7 +72,8 @@ public class TSPPanel extends JPanel {
         JPanel statusBar = createStatusBar();
         add(statusBar, BorderLayout.SOUTH);
     }
-      private JPanel createControlPanel() {
+
+    private JPanel createControlPanel() {
         JPanel leftPanel = new JPanel();
         leftPanel.setLayout(new BoxLayout(leftPanel, BoxLayout.Y_AXIS));
         leftPanel.setBackground(SIDEBAR_BG);
@@ -83,14 +81,12 @@ public class TSPPanel extends JPanel {
             new LineBorder(SECTION_BORDER, 1),
             new EmptyBorder(15, 15, 15, 15)));
         
-        // Title
         JLabel controlTitle = new JLabel("TSP Solver Configuration");
         controlTitle.setFont(TITLE_FONT);
         controlTitle.setAlignmentX(Component.LEFT_ALIGNMENT);
         leftPanel.add(controlTitle);
         leftPanel.add(Box.createVerticalStrut(15));
         
-        // Input Section
         JPanel inputSection = createTitledSection("Problem Setup");
         
         inputSection.add(createLabel("Number of Cities (N):"));
@@ -117,7 +113,7 @@ public class TSPPanel extends JPanel {
         
         leftPanel.add(inputSection);
         leftPanel.add(Box.createVerticalStrut(15));
-          // Action Buttons
+
         JButton genBtn = createButton("🗺️ Generate Random Map", new Color(108, 117, 125));
         genBtn.addActionListener(e -> generateRandomMatrix());
         leftPanel.add(genBtn);
@@ -138,7 +134,6 @@ public class TSPPanel extends JPanel {
         leftPanel.add(clearBtn);
         leftPanel.add(Box.createVerticalStrut(12));
         
-        // Progress Bar
         progressBar = new JProgressBar();
         progressBar.setIndeterminate(false);
         progressBar.setStringPainted(true);
@@ -147,7 +142,6 @@ public class TSPPanel extends JPanel {
         leftPanel.add(progressBar);
         leftPanel.add(Box.createVerticalStrut(12));
         
-        // Results Summary
         JPanel resultsPanel = createTitledSection("Results Summary");
         resultsPanel.setBorder(new CompoundBorder(
             new TitledBorder(new LineBorder(ACCENT_COLOR, 2), "Results Summary", TitledBorder.LEFT, TitledBorder.TOP, HEADER_FONT, ACCENT_COLOR),
@@ -173,11 +167,11 @@ public class TSPPanel extends JPanel {
         
         return leftPanel;
     }
-      private JPanel createGraphTab() {
+
+    private JPanel createGraphTab() {
         JPanel panel = new JPanel(new BorderLayout(5, 5));
         panel.setBackground(Color.WHITE);
         
-        // Graph Panel with Scroll
         graphPanel = new GraphPanel();
         JScrollPane scrollPane = new JScrollPane(graphPanel);
         scrollPane.setPreferredSize(new Dimension(800, 600));
@@ -185,7 +179,6 @@ public class TSPPanel extends JPanel {
         scrollPane.getHorizontalScrollBar().setUnitIncrement(16);
         panel.add(scrollPane, BorderLayout.CENTER);
         
-        // Graph Controls
         JPanel controlPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
         controlPanel.setBackground(new Color(250, 250, 250));
         controlPanel.setBorder(new EmptyBorder(10, 10, 10, 10));
@@ -197,9 +190,7 @@ public class TSPPanel extends JPanel {
         zoomSlider.setPaintTicks(true);
         zoomSlider.setPaintLabels(true);
         zoomSlider.setPreferredSize(new Dimension(200, 50));
-        zoomSlider.addChangeListener(e -> {
-            graphPanel.setZoom(zoomSlider.getValue() / 100.0);
-        });
+        zoomSlider.addChangeListener(e -> graphPanel.setZoom(zoomSlider.getValue() / 100.0));
         controlPanel.add(zoomSlider);
         
         JButton resetZoomBtn = new JButton("Reset View");
@@ -210,34 +201,31 @@ public class TSPPanel extends JPanel {
         controlPanel.add(resetZoomBtn);
         
         JCheckBox showLabelsBox = new JCheckBox("Show All Labels", true);
-        showLabelsBox.addActionListener(e -> {
-            graphPanel.setShowAllLabels(showLabelsBox.isSelected());
-        });
+        showLabelsBox.addActionListener(e -> graphPanel.setShowAllLabels(showLabelsBox.isSelected()));
         controlPanel.add(showLabelsBox);
         
         panel.add(controlPanel, BorderLayout.NORTH);
-        
         return panel;
     }
-      private JPanel createPathDetailsTab() {
+
+    private JPanel createPathDetailsTab() {
         JPanel panel = new JPanel(new BorderLayout(10, 10));
         panel.setBorder(new EmptyBorder(15, 15, 15, 15));
         panel.setBackground(Color.WHITE);
         
-        // Path as text area (formatted)
         pathArea = new JTextArea(8, 60);
         pathArea.setEditable(false);
         pathArea.setFont(new Font("Consolas", Font.PLAIN, 13));
         pathArea.setLineWrap(true);
-        pathArea.setWrapStyleWord(false);
+        pathArea.setWrapStyleWord(false);        
         pathArea.setBackground(new Color(250, 250, 250));
         pathArea.setMargin(new Insets(10, 10, 10, 10));
         JScrollPane pathScroll = new JScrollPane(pathArea);
         pathScroll.setBorder(BorderFactory.createTitledBorder("Path Sequence"));
         panel.add(pathScroll, BorderLayout.NORTH);
         
-        // Path as table (for large N)
-        String[] columnNames = {"Step", "From City", "To City", "Distance"};        DefaultTableModel tableModel = new DefaultTableModel(columnNames, 0) {
+        String[] columnNames = {"Step", "From City", "To City", "Distance"};
+        DefaultTableModel tableModel = new DefaultTableModel(columnNames, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
                 return false;
@@ -252,7 +240,8 @@ public class TSPPanel extends JPanel {
         
         return panel;
     }
-      private JPanel createMatrixTab() {
+
+    private JPanel createMatrixTab() {
         JPanel panel = new JPanel(new BorderLayout(5, 5));
         panel.setBorder(new EmptyBorder(15, 15, 15, 15));
         panel.setBackground(Color.WHITE);
@@ -273,7 +262,8 @@ public class TSPPanel extends JPanel {
         
         return panel;
     }
-      private JPanel createStatusBar() {
+
+    private JPanel createStatusBar() {
         JPanel statusBar = new JPanel(new BorderLayout());
         statusBar.setBackground(STATUS_BG);
         statusBar.setBorder(new CompoundBorder(
@@ -312,7 +302,8 @@ public class TSPPanel extends JPanel {
         tf.setAlignmentX(Component.LEFT_ALIGNMENT);
         return tf;
     }
-      private JButton createButton(String text, Color bg) {
+
+    private JButton createButton(String text, Color bg) {
         JButton btn = new JButton(text);
         btn.setFont(new Font("Segoe UI", Font.BOLD, 13));
         btn.setBackground(bg);
@@ -349,18 +340,15 @@ public class TSPPanel extends JPanel {
                 return;
             }
             
-            // GENERATE EUCLIDEAN MAP (Real-World Physics)
             int[] xCoords = new int[N];
             int[] yCoords = new int[N];
             Random rand = new Random();
             
-            // 1. Scatter cities randomly on a 200x200 grid
             for (int i = 0; i < N; i++) {
                 xCoords[i] = rand.nextInt(200);
                 yCoords[i] = rand.nextInt(200);
             }
             
-            // 2. Calculate true geometric distances (Pythagorean theorem)
             StringBuilder sb = new StringBuilder();
             for (int i = 0; i < N; i++) {
                 for (int j = 0; j < N; j++) {
@@ -370,7 +358,7 @@ public class TSPPanel extends JPanel {
                         double dx = xCoords[i] - xCoords[j];
                         double dy = yCoords[i] - yCoords[j];
                         int dist = (int) Math.round(Math.sqrt(dx*dx + dy*dy));
-                        if (dist == 0) dist = 1; // Prevent 0 distance for distinct nodes
+                        if (dist == 0) dist = 1; 
                         sb.append(String.format("%4d ", dist));
                     }
                 }
@@ -381,7 +369,6 @@ public class TSPPanel extends JPanel {
             statusLabel.setText("Geometric map generated with " + N + " cities");
             statusLabel.setForeground(SUCCESS_COLOR);
             
-            // Clear previous results
             solutionPath.clear();
             pathArea.setText("");
             ((DefaultTableModel) pathTable.getModel()).setRowCount(0);
@@ -390,7 +377,6 @@ public class TSPPanel extends JPanel {
             timeLabel.setText("Execution Time: --");
             graphPanel.repaint();
             
-            // Switch to matrix tab
             tabbedPane.setSelectedIndex(2);
             
         } catch (NumberFormatException e) {
@@ -425,27 +411,25 @@ public class TSPPanel extends JPanel {
             return;
         }
         
-        // UPDATED: Auto-switch algorithm logic.
-        // If Exact is selected and N > 22, jump directly to Clustered Hybrid (Index 2)
+        // --- HARDWARE PROTECTION LOGIC ---
         int selectedIndex = algoSelector.getSelectedIndex();
         if (selectedIndex == 0) {
-            if (N > 22) {
+            if (N > 14) {
                 JOptionPane.showMessageDialog(this,
-                    "Input size (N=" + N + ") is massive.\n" +
-                    "Switching to Massive Scale Hybrid to prevent crash.",
-                    "Auto-Switch Warning",
+                    "Input size (N=" + N + ") exceeds the 1.74 GB 32-bit RAM hardware limit for Exact Branch & Bound.\n" +
+                    "Automatically switching to Massive Scale Hybrid to prevent operating system crash.",
+                    "Hardware Protection Triggered",
                     JOptionPane.WARNING_MESSAGE);
-                algoSelector.setSelectedIndex(2); // Index 2 is Mode 3 (Clustered Hybrid)
+                algoSelector.setSelectedIndex(2); 
             }
         }
         
         final String mode = String.valueOf(algoSelector.getSelectedIndex() + 1);
         
-        // Background execution
         new Thread(() -> {
             try {
                 long startTime = System.currentTimeMillis();
-                  SwingUtilities.invokeLater(() -> {
+                SwingUtilities.invokeLater(() -> {
                     statusLabel.setText("Solving TSP...");
                     statusLabel.setForeground(ACCENT_COLOR);
                     progressBar.setIndeterminate(true);
@@ -453,9 +437,11 @@ public class TSPPanel extends JPanel {
                 
                 saveInputToFile("input.txt");
                 
-                // Cross-platform EXE extension handler
-                String exeExt = System.getProperty("os.name").toLowerCase().contains("win") ? ".exe" : "";
-                ProcessBuilder pb = new ProcessBuilder("tsp_solver" + exeExt, "input.txt", mode, startNodeStr);
+                // Extract C executable from the JAR package dynamically
+                String exeName = System.getProperty("os.name").toLowerCase().contains("win") ? "tsp_solver.exe" : "tsp_solver";
+                String exePath = extractExecutable(exeName);
+                
+                ProcessBuilder pb = new ProcessBuilder(exePath, "input.txt", mode, startNodeStr);
                 pb.redirectErrorStream(true);
                 Process process = pb.start();
                 
@@ -465,12 +451,21 @@ public class TSPPanel extends JPanel {
                     System.out.println("[Backend]: " + line);
                 }
                 
-                process.waitFor();
+                int exitCode = process.waitFor();
                 executionTime = System.currentTimeMillis() - startTime;
                 
                 SwingUtilities.invokeLater(() -> {
                     progressBar.setIndeterminate(false);
-                    loadSolution("solution.csv");
+                    if (exitCode != 0) {
+                        statusLabel.setText("Backend Engine Crashed (Exit Code " + exitCode + ")");
+                        statusLabel.setForeground(Color.RED);
+                        JOptionPane.showMessageDialog(TSPPanel.this,
+                            "The C backend engine terminated unexpectedly.\nThis is typically caused by a memory limit enforcement.",
+                            "Engine Crash",
+                            JOptionPane.ERROR_MESSAGE);
+                    } else {
+                        loadSolution("solution.csv");
+                    }
                 });
                 
             } catch (Exception e) {
@@ -495,7 +490,7 @@ public class TSPPanel extends JPanel {
         try {
             File file = new File(filename);
             if (!file.exists()) {
-                statusLabel.setText("Backend failed - solution file not found");
+                statusLabel.setText("Backend completed, but no solution file was written.");
                 statusLabel.setForeground(Color.RED);
                 return;
             }
@@ -515,18 +510,15 @@ public class TSPPanel extends JPanel {
             solutionCost = Integer.parseInt(parts[0]);
             solutionPath.clear();
             
-            // Build path
             for (int i = 1; i < parts.length; i++) {
                 solutionPath.add(Integer.parseInt(parts[i]));
             }
             
-            // Update UI
             updateResults();
             
             statusLabel.setText("✓ Solution found successfully!");
             statusLabel.setForeground(SUCCESS_COLOR);
             
-            // Switch to visualization tab
             tabbedPane.setSelectedIndex(0);
             
         } catch (Exception e) {
@@ -537,12 +529,10 @@ public class TSPPanel extends JPanel {
     }
     
     private void updateResults() {
-        // Update summary
         costLabel.setText("Total Cost: " + solutionCost);
         nodesLabel.setText("Cities Visited: " + solutionPath.size());
         timeLabel.setText("Execution Time: " + executionTime + " ms");
         
-        // Format path text
         StringBuilder pathText = new StringBuilder();
         pathText.append("Optimal Path:\n");
         
@@ -562,11 +552,7 @@ public class TSPPanel extends JPanel {
         pathText.append("\nTotal Distance: ").append(solutionCost);
         
         pathArea.setText(pathText.toString());
-        
-        // Update table
         updatePathTable();
-        
-        // Repaint graph
         graphPanel.repaint();
     }
     
@@ -574,7 +560,6 @@ public class TSPPanel extends JPanel {
         DefaultTableModel model = (DefaultTableModel) pathTable.getModel();
         model.setRowCount(0);
         
-        // Parse distance matrix for actual distances
         int[][] distMatrix = parseDistanceMatrix();
         
         for (int i = 0; i < solutionPath.size() - 1; i++) {
@@ -583,27 +568,16 @@ public class TSPPanel extends JPanel {
             int distance = (distMatrix != null && distMatrix.length > from && distMatrix[from].length > to) 
                 ? distMatrix[from][to] : 0;
             
-            model.addRow(new Object[]{
-                i + 1,
-                from,
-                to,
-                distance
-            });
+            model.addRow(new Object[]{i + 1, from, to, distance});
         }
         
-        // Add return trip
         if (solutionPath.size() > 0) {
             int from = solutionPath.get(solutionPath.size() - 1);
             int to = solutionPath.get(0);
             int distance = (distMatrix != null && distMatrix.length > from && distMatrix[from].length > to) 
                 ? distMatrix[from][to] : 0;
             
-            model.addRow(new Object[]{
-                solutionPath.size(),
-                from,
-                to + " (return)",
-                distance
-            });
+            model.addRow(new Object[]{solutionPath.size(), from, to + " (return)", distance});
         }
     }
     
@@ -693,6 +667,37 @@ public class TSPPanel extends JPanel {
             graphPanel.repaint();
         }
     }
+
+    // --- NATIVE EXTRACTION ENGINE ---
+    private String extractExecutable(String exeName) {
+        try {
+            InputStream is = getClass().getResourceAsStream("/" + exeName);
+            if (is == null) {
+                System.out.println("[Backend] Could not find " + exeName + " in JAR. Falling back to local directory.");
+                return exeName; 
+            }
+            
+            File tempExe = File.createTempFile("native_engine_", ".exe");
+            tempExe.deleteOnExit(); 
+            
+            FileOutputStream os = new FileOutputStream(tempExe);
+            byte[] buffer = new byte[1024];
+            int length;
+            while ((length = is.read(buffer)) != -1) {
+                os.write(buffer, 0, length);
+            }
+            
+            is.close();
+            os.close();
+            
+            tempExe.setExecutable(true);
+            return tempExe.getAbsolutePath();
+            
+        } catch (Exception e) {
+            e.printStackTrace();
+            return exeName;
+        }
+    }
     
     // ===== GRAPH PANEL CLASS =====
     class GraphPanel extends JPanel {
@@ -705,12 +710,8 @@ public class TSPPanel extends JPanel {
             setPreferredSize(new Dimension(1000, 800));
             setBackground(Color.WHITE);
             
-            // Add mouse drag support
             MouseAdapter ma = new MouseAdapter() {
-                public void mousePressed(MouseEvent e) {
-                    dragStart = e.getPoint();
-                }
-                
+                public void mousePressed(MouseEvent e) { dragStart = e.getPoint(); }
                 public void mouseDragged(MouseEvent e) {
                     if (dragStart != null) {
                         offsetX += e.getX() - dragStart.x;
@@ -719,10 +720,7 @@ public class TSPPanel extends JPanel {
                         repaint();
                     }
                 }
-                
-                public void mouseReleased(MouseEvent e) {
-                    dragStart = null;
-                }
+                public void mouseReleased(MouseEvent e) { dragStart = null; }
             };
             
             addMouseListener(ma);
@@ -757,9 +755,7 @@ public class TSPPanel extends JPanel {
                 g.setColor(Color.GRAY);
                 String msg = "Generate a map to see the graph visualization";
                 FontMetrics fm = g.getFontMetrics();
-                g.drawString(msg, 
-                    getWidth()/2 - fm.stringWidth(msg)/2, 
-                    getHeight()/2);
+                g.drawString(msg, getWidth()/2 - fm.stringWidth(msg)/2, getHeight()/2);
                 return;
             }
             
@@ -782,7 +778,6 @@ public class TSPPanel extends JPanel {
                 );
             }
             
-            // Draw background edges
             g2.setColor(new Color(230, 230, 230));
             g2.setStroke(new BasicStroke(1));
             for (int i = 0; i < N; i++) {
@@ -791,7 +786,6 @@ public class TSPPanel extends JPanel {
                 }
             }
             
-            // Draw solution path
             if (!solutionPath.isEmpty()) {
                 g2.setColor(new Color(220, 53, 69));
                 g2.setStroke(new BasicStroke((float)(3 * zoomFactor)));
@@ -802,7 +796,6 @@ public class TSPPanel extends JPanel {
                     drawArrow(g2, p1.x, p1.y, p2.x, p2.y);
                 }
                 
-                // Draw return edge
                 Point pLast = points[solutionPath.get(solutionPath.size() - 1)];
                 Point pFirst = points[solutionPath.get(0)];
                 g2.setStroke(new BasicStroke((float)(2 * zoomFactor), 
@@ -810,65 +803,42 @@ public class TSPPanel extends JPanel {
                     10.0f, new float[]{10.0f}, 0.0f));
                 drawArrow(g2, pLast.x, pLast.y, pFirst.x, pFirst.y);
                 
-                // Draw cost label
                 g2.setColor(Color.BLACK);
                 g2.setFont(new Font("Segoe UI", Font.BOLD, (int)(20 * zoomFactor)));
                 g2.drawString("Cost: " + solutionCost, 20, 30);
             }
             
-            // Draw nodes
             int nodeSize = (int) (30 * zoomFactor);
             for (int i = 0; i < N; i++) {
                 boolean isStart = (i == currentStartNode);
                 boolean isInPath = solutionPath.contains(i);
                 
-                // Node color
-                if (isStart) {
-                    g2.setColor(new Color(40, 167, 69));
-                } else if (isInPath) {
-                    g2.setColor(new Color(0, 123, 255));
-                } else {
-                    g2.setColor(new Color(108, 117, 125));
-                }
+                if (isStart) g2.setColor(new Color(40, 167, 69));
+                else if (isInPath) g2.setColor(new Color(0, 123, 255));
+                else g2.setColor(new Color(108, 117, 125));
                 
                 g2.fillOval(points[i].x - nodeSize/2, points[i].y - nodeSize/2, nodeSize, nodeSize);
                 
-                // Node border
                 g2.setColor(Color.WHITE);
                 g2.setStroke(new BasicStroke((float)(2 * zoomFactor)));
                 g2.drawOval(points[i].x - nodeSize/2, points[i].y - nodeSize/2, nodeSize, nodeSize);
                 
-                // Node label
                 if (showAllLabels || N <= 30 || isStart || isInPath) {
                     g2.setColor(Color.WHITE);
                     g2.setFont(new Font("Segoe UI", Font.BOLD, (int)(12 * zoomFactor)));
                     String label = String.valueOf(i);
                     FontMetrics fm = g2.getFontMetrics();
-                    g2.drawString(label, 
-                        points[i].x - fm.stringWidth(label)/2, 
-                        points[i].y + fm.getAscent()/2 - 2);
+                    g2.drawString(label, points[i].x - fm.stringWidth(label)/2, points[i].y + fm.getAscent()/2 - 2);
                 }
             }
         }
         
         private void drawArrow(Graphics2D g2, int x1, int y1, int x2, int y2) {
             g2.drawLine(x1, y1, x2, y2);
-            
-            // Arrow head
             double angle = Math.atan2(y2 - y1, x2 - x1);
             int arrowSize = (int) (10 * zoomFactor);
-            
-            int[] xPoints = {
-                x2,
-                x2 - (int)(arrowSize * Math.cos(angle - Math.PI/6)),
-                x2 - (int)(arrowSize * Math.cos(angle + Math.PI/6))
-            };
-            int[] yPoints = {
-                y2,
-                y2 - (int)(arrowSize * Math.sin(angle - Math.PI/6)),
-                y2 - (int)(arrowSize * Math.sin(angle + Math.PI/6))
-            };
-            
+            int[] xPoints = { x2, x2 - (int)(arrowSize * Math.cos(angle - Math.PI/6)), x2 - (int)(arrowSize * Math.cos(angle + Math.PI/6)) };
+            int[] yPoints = { y2, y2 - (int)(arrowSize * Math.sin(angle - Math.PI/6)), y2 - (int)(arrowSize * Math.sin(angle + Math.PI/6)) };
             g2.fillPolygon(xPoints, yPoints, 3);
         }
     }

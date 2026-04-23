@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <time.h>
 #include <limits.h>
-#include <omp.h>
+#include <omp.h>//sob CPU use korte dibe
 #include "../include/aco.h"
 
 #define ANTS 20
@@ -15,16 +15,16 @@ double power(double base, int exp) {
     double result = 1.0;
     for (int i = 0; i < exp; i++) {
         result *= base;
-    }
+    }          //pow() float point approximation use korto jate cpu bere jaito
     return result;
 }
 double prob(int current, int target, double** pheromones, int** dist) {
     if (dist[current][target] == 0) return 0.0;
 
-    double tau = pheromones[current][target]; 
+    double tau = pheromones[current][target]; //tau=pheromone lvl
     double eta = 1.0 / (double)dist[current][target];
 
-    return tau * power(eta, (int)BETA);
+    return tau * power(eta, (int)BETA);//aco formula
 }
 int solveACO(int** matrix, int N, int startNode, int silent) {
 
@@ -46,7 +46,7 @@ int solveACO(int** matrix, int N, int startNode, int silent) {
 
         int** antPaths = (int**)malloc(ANTS * sizeof(int*));
         int* antCosts = (int*)malloc(ANTS * sizeof(int));
-        #pragma omp parallel for
+        #pragma omp parallel for//ekhane cpu 1 e ekta pipra and cpu 2 te arekta pipra
         for (int k = 0; k < ANTS; k++) {
 
             antPaths[k] = (int*)malloc((N + 1) * sizeof(int));
@@ -65,7 +65,7 @@ int solveACO(int** matrix, int N, int startNode, int silent) {
                         totalProb += prob(current, j, pheromones, matrix);
                     }
                 }
-                double r = ((double)rand() / RAND_MAX) * totalProb;
+                double r = ((double)rand() / RAND_MAX) * totalProb; //generate a random val
 
                 int nextCity = -1;
                 double cumulative = 0.0;
@@ -96,7 +96,7 @@ int solveACO(int** matrix, int N, int startNode, int silent) {
             cost += matrix[current][startNode];
 
             antCosts[k] = cost;
-            #pragma omp critical
+            #pragma omp critical    //When an ant finishes, it checks if it found the new best route
             {
                 if (cost < bestGlobalCost) {
                     bestGlobalCost = cost;
@@ -110,10 +110,10 @@ int solveACO(int** matrix, int N, int startNode, int silent) {
         }
         for (int i = 0; i < N; i++) {
             for (int j = 0; j < N; j++) {
-                pheromones[i][j] *= (1.0 - EVAPORATION);
+                pheromones[i][j] *= (1.0 - EVAPORATION);//evaporate
             }
         }
-        for (int k = 0; k < ANTS; k++) {
+        for (int k = 0; k < ANTS; k++) {//deposit
 
             double deposit = Q / (double)antCosts[k];
 

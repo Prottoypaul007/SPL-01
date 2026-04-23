@@ -7,6 +7,7 @@
 #include "../include/aco.h"
 #include "../include/cluster.h"
 
+// Helper function to read back results written by solveACO or solveTSP
 int* readPathFromCSV(int expectedSize, int* outCost) {
     FILE* f = fopen("solution.csv", "r");
     if (!f) return NULL;
@@ -40,8 +41,13 @@ int main(int argc, char* argv[]) {
     if (startNode < 0 || startNode >= N) startNode = 0;
 
     printf("[Backend] Loaded %d Cities. Start Node: %d\n", N, startNode);
-    if (mode == 1 && N > 22) {
-        printf("[Auto-Switch] N=%d is massive. Switching to Clustered Hybrid (Mode 3).\n", N);
+
+    // WIPE THE GHOST FILE
+    remove("solution.csv");
+
+    // 32-BIT RAM HARDWARE LIMIT (1.74GB MAX)
+    if (mode == 1 && N > 14) {
+        printf("[Auto-Switch] N=%d is too large for 32-bit RAM. Switching to Clustered Hybrid.\n", N);
         mode = 3; 
     }
 
@@ -52,49 +58,49 @@ int main(int argc, char* argv[]) {
     else if (mode == 3) {
         printf("[Backend] Mode: Massive Scale Hybrid (K-Medoids + B&B + ACO)\n");
 
-        if (N <= 20) {
-            solveTSP(matrix, N, startNode, INT_MAX);
+        if (N <= 14) {
+            // BULLETPROOF WARM START
+            int tightBound = INT_MAX;
+            for (int a = 0; a < 30; a++) {
+                int cost = solveACO(matrix, N, startNode, 1); 
+                if (cost < tightBound) tightBound = cost;
+            }
+            solveACO(matrix, N, startNode, 0); // Write guaranteed fallback
+            solveTSP(matrix, N, startNode, tightBound + 1); // +1 prevents optimal pruning
         } else {
             int K = (N / 12) + 1; 
             Cluster* zones = clusterCities(matrix, N, K);
-            //Micro-Routing
+            
             for (int i = 0; i < K; i++) {
                 int size = zones[i].size;
-                
-                // Safety 1: STRICT guards for empty/tiny clusters
-                if (size == 0) {
-                    zones[i].optimalPath = NULL;
-                    continue;
-                }
+                if (size <= 0) { zones[i].optimalPath = NULL; continue; }
                 if (size == 1) {
                     zones[i].optimalPath = (int*)malloc(sizeof(int));
                     zones[i].optimalPath[0] = zones[i].cities[0];
                     continue;
                 }
 
-                printf("\n--- Solving Local Zone %d (Size: %d, Center: %d) ---\n", i, size, zones[i].medoid);
-                
                 int** microMatrix = createMatrix(size);
                 for (int u = 0; u < size; u++) {
                     for (int v = 0; v < size; v++) {
                         microMatrix[u][v] = matrix[zones[i].cities[u]][zones[i].cities[v]];
                     }
                 }
-                                remove("solution.csv");
-
-                if (size > 12) {
-                    printf("[Fallback] Cluster too large (%d)! Using ACO for this zone.\n", size);
+                
+                remove("solution.csv");
+                if (size > 14) {
                     solveACO(microMatrix, size, 0, 0); 
                 } else {
-                    //ram thik rakhar jnne ACO cholbe
+                    // BULLETPROOF MICRO-ROUTING
                     int tightBound = INT_MAX;
                     for (int a = 0; a < 30; a++) {
-                        int cost = solveACO(microMatrix, size, 0, 1); // 1 = silent mode
+                        int cost = solveACO(microMatrix, size, 0, 1);
                         if (cost < tightBound) tightBound = cost;
                     }
-                    printf("      [Pruning] Warm-start bound locked at: %d\n", tightBound);
-                    solveTSP(microMatrix, size, 0, tightBound); 
+                    solveACO(microMatrix, size, 0, 0); // Write guaranteed fallback
+                    solveTSP(microMatrix, size, 0, tightBound + 1); // +1 prevents optimal pruning
                 }
+
                 int dummyCost;
                 int* localPath = readPathFromCSV(size, &dummyCost);
                 if (localPath != NULL) {
@@ -103,81 +109,72 @@ int main(int argc, char* argv[]) {
                         zones[i].optimalPath[p] = zones[i].cities[localPath[p]];
                     }
                     free(localPath);
-                } else {
-                    zones[i].optimalPath = NULL;
-                }
-                
+                } else { zones[i].optimalPath = NULL; }
                 destroyMatrix(microMatrix, size);
             }
-            printf("\n--- Connecting %d zones via Ant Colony ---\n", K);
+
+            // Macro-Routing
             int** macroMatrix = createMatrix(K);
             for (int u = 0; u < K; u++) {
                 for (int v = 0; v < K; v++) {
                     macroMatrix[u][v] = matrix[zones[u].medoid][zones[v].medoid];
                 }
             }
-            
             remove("solution.csv");
             solveACO(macroMatrix, K, 0, 0); 
             int dummyMacroCost;
             int* macroPath = readPathFromCSV(K, &dummyMacroCost);
             destroyMatrix(macroMatrix, K);            
+            
             if (macroPath != NULL) {
-                printf("[Stitching] Assembling cities with jump optimization...\n");
                 int* finalRoute = (int*)malloc(N * sizeof(int));
                 int idx = 0;
-                
                 for (int m = 0; m < K; m++) {
                     int clusterId = macroPath[m];
                     int size = zones[clusterId].size;                    
                     if (size == 0 || zones[clusterId].optimalPath == NULL) continue;                    
                     if (idx == 0) { 
-                        for (int p = 0; p < size; p++) {
-                            finalRoute[idx++] = zones[clusterId].optimalPath[p];
-                        }
+                        for (int p = 0; p < size; p++) finalRoute[idx++] = zones[clusterId].optimalPath[p];
                     } else {
                         int lastCity = finalRoute[idx - 1];
-                        int bestStartIndex = 0;
-                        int minJumpDist = INT_MAX;
-                        
+                        int bestStartIndex = 0, minJumpDist = INT_MAX;
                         for (int p = 0; p < size; p++) {
-                            int candidateCity = zones[clusterId].optimalPath[p];
-                            if (matrix[lastCity][candidateCity] < minJumpDist) {
-                                minJumpDist = matrix[lastCity][candidateCity];
+                            int candidate = zones[clusterId].optimalPath[p];
+                            if (matrix[lastCity][candidate] < minJumpDist) {
+                                minJumpDist = matrix[lastCity][candidate];
                                 bestStartIndex = p;
                             }
                         }
-                        for (int p = 0; p < size; p++) {
-                            int rotatedIndex = (bestStartIndex + p) % size;
-                            finalRoute[idx++] = zones[clusterId].optimalPath[rotatedIndex];
-                        }
+                        for (int p = 0; p < size; p++) finalRoute[idx++] = zones[clusterId].optimalPath[(bestStartIndex + p) % size];
                     }
                 }
                 if (idx > 0) {
                     int finalCost = 0;
-                    for (int i = 0; i < idx - 1; i++) {
-                        finalCost += matrix[finalRoute[i]][finalRoute[i+1]];
-                    }
+                    for (int i = 0; i < idx - 1; i++) finalCost += matrix[finalRoute[i]][finalRoute[i+1]];
                     finalCost += matrix[finalRoute[idx-1]][finalRoute[0]]; 
-                    
                     FILE* finalOut = fopen("solution.csv", "w");
                     if (finalOut) {
                         fprintf(finalOut, "%d,", finalCost);
-                        for (int i = 0; i < idx; i++) {
-                            fprintf(finalOut, "%d,", finalRoute[i]);
-                        }
+                        for (int i = 0; i < idx; i++) fprintf(finalOut, "%d,", finalRoute[i]);
                         fprintf(finalOut, "%d\n", finalRoute[0]); 
                         fclose(finalOut);
                     }
                 }
-                free(finalRoute);
-                free(macroPath);
+                free(finalRoute); free(macroPath);
             }
             freeClusters(zones, K);
         }
     } else {
         printf("[Backend] Mode: Exact (Branch & Bound)\n");
-        solveTSP(matrix, N, startNode, INT_MAX);
+        // BULLETPROOF EXACT MODE
+        int tightBound = INT_MAX;
+        for (int a = 0; a < 30; a++) {
+            int cost = solveACO(matrix, N, startNode, 1); 
+            if (cost < tightBound) tightBound = cost;
+        }
+        printf("[Pruning] Warm-start locked bound at: %d\n", tightBound);
+        solveACO(matrix, N, startNode, 0); // Write guaranteed fallback
+        solveTSP(matrix, N, startNode, tightBound + 1); // +1 prevents optimal pruning
     }
 
     destroyMatrix(matrix, N);

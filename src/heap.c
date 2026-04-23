@@ -18,7 +18,7 @@ MinHeap* createMinHeap(int capacity) {
     return minHeap;
 }
 
-void swap(Node** a, Node** b) {
+void swap(Node** a, Node** b) { //heapify
     Node* t = *a;
     *a = *b;
     *b = t;

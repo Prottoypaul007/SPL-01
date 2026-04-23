@@ -103,7 +103,7 @@ void solveTSP(int** costMatrix, int N,
         }
         return;
     }
-    MinHeap* pq = createMinHeap(2000000);
+    MinHeap* pq = createMinHeap(1500000);
 
     int* tempPath = (int*)malloc((N + 1) * sizeof(int));
     Node* root = newNode(costMatrix, tempPath,

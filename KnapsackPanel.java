@@ -2,6 +2,7 @@ import javax.swing.*;
 import javax.swing.border.*;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.JTableHeader;
+import javax.swing.table.DefaultTableCellRenderer;
 import java.awt.*;
 import java.awt.event.*;
 import java.io.*;
@@ -28,7 +29,9 @@ public class KnapsackPanel extends JPanel {
     private int Capacity = 0;
     private int totalProfit = 0;
     private int totalWeight = 0;
-    private long executionTime = 0;    // Design
+    private long executionTime = 0;
+
+    // Design
     private final Font MAIN_FONT = new Font("Segoe UI", Font.PLAIN, 14);
     private final Font HEADER_FONT = new Font("Segoe UI", Font.BOLD, 16);
     private final Font TITLE_FONT = new Font("Segoe UI", Font.BOLD, 20);
@@ -38,13 +41,14 @@ public class KnapsackPanel extends JPanel {
     private final Color TABLE_HEADER_BG = new Color(33, 150, 243);
     private final Color TABLE_HEADER_FG = Color.WHITE;
     private final Color STATUS_BG = new Color(240, 240, 245);
-    private final Color SECTION_BORDER = new Color(200, 200, 200);    public KnapsackPanel() {
+    private final Color SECTION_BORDER = new Color(200, 200, 200);
+
+    public KnapsackPanel() {
         setLayout(new BorderLayout(10, 10));
 
         // --- SIDEBAR (CONTROLS) ---
         JPanel leftPanel = createControlPanel();
         
-        // SCROLL PANE FIX: Ensures UI never gets cut off vertically
         JScrollPane leftScroll = new JScrollPane(leftPanel);
         leftScroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
         leftScroll.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
@@ -64,7 +68,9 @@ public class KnapsackPanel extends JPanel {
         
         add(tabbedPane, BorderLayout.CENTER);
         add(createStatusBar(), BorderLayout.SOUTH);
-    }    private JPanel createControlPanel() {
+    }
+
+    private JPanel createControlPanel() {
         JPanel leftPanel = new JPanel();
         leftPanel.setLayout(new BoxLayout(leftPanel, BoxLayout.Y_AXIS));
         leftPanel.setBackground(SIDEBAR_BG);
@@ -74,7 +80,9 @@ public class KnapsackPanel extends JPanel {
         controlTitle.setFont(TITLE_FONT);
         controlTitle.setAlignmentX(Component.LEFT_ALIGNMENT);
         leftPanel.add(controlTitle);
-        leftPanel.add(Box.createVerticalStrut(15));JPanel setupSection = createTitledSection("Problem Setup");
+        leftPanel.add(Box.createVerticalStrut(15));
+
+        JPanel setupSection = createTitledSection("Problem Setup");
         setupSection.add(createLabel("Number of Items (N):"));
         nInput = createTextField("10");
         setupSection.add(nInput);
@@ -98,7 +106,9 @@ public class KnapsackPanel extends JPanel {
         setupSection.add(algoSelector);
         
         leftPanel.add(setupSection);
-        leftPanel.add(Box.createVerticalStrut(15));        JButton genBtn = createButton("🎲 Generate Random Items", new Color(108, 117, 125));
+        leftPanel.add(Box.createVerticalStrut(15));
+
+        JButton genBtn = createButton("🎲 Generate Random Items", new Color(108, 117, 125));
         genBtn.addActionListener(e -> generateData());
         leftPanel.add(genBtn);
         leftPanel.add(Box.createVerticalStrut(8));
@@ -166,11 +176,11 @@ public class KnapsackPanel extends JPanel {
         
         int selectedIndex = algoSelector.getSelectedIndex();
         
-        // Safety Interceptor: Only warn for Pure Exact (index 0). Hybrid (index 2) is now immune to crashes.
+        // --- HARDWARE PROTECTION ---
         if (selectedIndex == 0 && N > 28) {
             int choice = JOptionPane.showConfirmDialog(this,
-                "N=" + N + " is high for standard Branch & Bound. This might use a lot of RAM.\n" +
-                "Switch to Advanced Core-Problem Hybrid?", "Safety Warning", JOptionPane.YES_NO_OPTION);
+                "N=" + N + " is high for standard Branch & Bound. This will likely overflow your RAM.\n" +
+                "Would you like to automatically switch to the Advanced Core-Problem Hybrid?", "Hardware Safety Warning", JOptionPane.YES_NO_OPTION);
             
             if (choice == JOptionPane.YES_OPTION) {
                 algoSelector.setSelectedIndex(2);
@@ -178,45 +188,62 @@ public class KnapsackPanel extends JPanel {
             }
         }
 
-        final int modeValue = selectedIndex + 1; // 1: Exact, 2: Greedy, 3: Advanced Hybrid
+        final int modeValue = selectedIndex + 1; 
 
         new Thread(() -> {
             try {
                 long startTime = System.currentTimeMillis();
                 SwingUtilities.invokeLater(() -> {
                     statusLabel.setText("Solving Knapsack...");
+                    statusLabel.setForeground(ACCENT_COLOR);
                     progressBar.setIndeterminate(true);
                 });
                 
-                // Write input for C
                 BufferedWriter bw = new BufferedWriter(new FileWriter("knapsack_input.txt"));
                 bw.write(N + " " + Capacity + "\n");
                 bw.write(inputArea.getText());
                 bw.close();
 
-                // Clean old solution
+                // Destroy old ghost files before running backend
                 new File("solution_knapsack.csv").delete();
 
-                String exeExt = System.getProperty("os.name").toLowerCase().contains("win") ? ".exe" : "";
-                ProcessBuilder pb = new ProcessBuilder("knapsack_solver" + exeExt, "knapsack_input.txt", String.valueOf(modeValue));
+                // --- EXTRACT C ENGINE DYNAMICALLY ---
+                String exeName = System.getProperty("os.name").toLowerCase().contains("win") ? "knapsack_solver.exe" : "knapsack_solver";
+                String exePath = extractExecutable(exeName);
+
+                ProcessBuilder pb = new ProcessBuilder(exePath, "knapsack_input.txt", String.valueOf(modeValue));
                 pb.redirectErrorStream(true);
                 Process p = pb.start();
 
                 BufferedReader reader = new BufferedReader(new InputStreamReader(p.getInputStream()));
                 String line;
                 while ((line = reader.readLine()) != null) {
-                    System.out.println("[Backend]: " + line);
+                    System.out.println("[Backend Knapsack]: " + line);
                 }
 
-                p.waitFor();
+                int exitCode = p.waitFor();
                 executionTime = System.currentTimeMillis() - startTime;
 
                 SwingUtilities.invokeLater(() -> {
                     progressBar.setIndeterminate(false);
-                    loadSolution();
+                    if (exitCode != 0) {
+                        statusLabel.setText("Backend Engine Crashed (Exit Code " + exitCode + ")");
+                        statusLabel.setForeground(Color.RED);
+                        JOptionPane.showMessageDialog(KnapsackPanel.this,
+                            "The Knapsack C-engine terminated unexpectedly.\nThis is usually caused by reaching the 2,000,000 node RAM limit in Exact Mode.",
+                            "Engine Crash",
+                            JOptionPane.ERROR_MESSAGE);
+                    } else {
+                        loadSolution();
+                    }
                 });
             } catch(Exception e) {
                 e.printStackTrace();
+                SwingUtilities.invokeLater(() -> {
+                    statusLabel.setText("Error occurred during execution");
+                    statusLabel.setForeground(Color.RED);
+                    progressBar.setIndeterminate(false);
+                });
             }
         }).start();
     }
@@ -225,7 +252,8 @@ public class KnapsackPanel extends JPanel {
         try {
             File f = new File("solution_knapsack.csv");
             if(!f.exists()) {
-                statusLabel.setText("No solution file found.");
+                statusLabel.setText("Backend completed, but no solution file found.");
+                statusLabel.setForeground(Color.RED);
                 return;
             }
             
@@ -248,10 +276,12 @@ public class KnapsackPanel extends JPanel {
                 
                 updateResults();
                 statusLabel.setText("✓ Optimization complete using " + algoSelector.getSelectedItem());
+                statusLabel.setForeground(SUCCESS_COLOR);
                 tabbedPane.setSelectedIndex(0);
             }
         } catch(Exception e) {
             statusLabel.setText("Error parsing solution.");
+            statusLabel.setForeground(Color.RED);
         }
     }
 
@@ -292,11 +322,13 @@ public class KnapsackPanel extends JPanel {
     private void updateResults() {
         profitLabel.setText("Total Profit: " + totalProfit);
         weightLabel.setText("Total Weight: " + totalWeight + " / " + Capacity);
-        double eff = Capacity > 0 ? (totalProfit * 100.0 / Capacity) : 0;
-        efficiencyLabel.setText(String.format("Efficiency: %.2f (profit/cap)", eff));
+        double eff = totalWeight > 0 ? ((double) totalProfit / totalWeight) : 0;
+        efficiencyLabel.setText(String.format("Efficiency: %.2f (profit per weight unit)", eff));
         timeLabel.setText("Execution Time: " + executionTime + " ms");
         updateAllItemsTable();
         updateSelectedItemsTable();
+        
+        visPanel.revalidate(); 
         visPanel.repaint();
     }
 
@@ -331,7 +363,11 @@ public class KnapsackPanel extends JPanel {
         JPanel panel = new JPanel(new BorderLayout(5, 5));
         panel.setBackground(Color.WHITE);
         visPanel = new KnapsackVisPanel();
+        
         JScrollPane scrollPane = new JScrollPane(visPanel);
+        scrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+        scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_NEVER);
+        
         panel.add(scrollPane, BorderLayout.CENTER);
         
         JPanel controlPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
@@ -351,13 +387,42 @@ public class KnapsackPanel extends JPanel {
     class KnapsackVisPanel extends JPanel {
         private double zoom = 1.0;
         private boolean showVal = true;
-        public void setZoom(double z) { this.zoom = z; repaint(); }
-        public void setShowValues(boolean s) { this.showVal = s; repaint(); }
-        public void resetView() { zoom = 1.0; repaint(); }
-        @Override protected void paintComponent(Graphics g) {
+        
+        public void setZoom(double z) { 
+            this.zoom = z; 
+            revalidate();
+            repaint(); 
+        }
+        
+        public void setShowValues(boolean s) { 
+            this.showVal = s; 
+            repaint(); 
+        }
+        
+        public void resetView() { 
+            zoom = 1.0; 
+            revalidate();
+            repaint(); 
+        }
+
+        @Override
+        public Dimension getPreferredSize() {
+            if (values == null || N == 0) {
+                return new Dimension(800, 400); 
+            }
+            int barW = (int)(30 * zoom);
+            int totalWidth = 50 + (N * (barW + 5)) + 50; 
+            return new Dimension(totalWidth, 400);
+        }
+
+        @Override 
+        protected void paintComponent(Graphics g) {
             super.paintComponent(g);
             if (values == null) return;
             Graphics2D g2 = (Graphics2D) g;
+            
+            g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+            
             int barW = (int)(30 * zoom);
             int baseline = getHeight() - 60;
             for(int i=0; i<N; i++) {
@@ -368,7 +433,9 @@ public class KnapsackPanel extends JPanel {
                 if(showVal) g2.drawString(String.valueOf(values[i]), 50 + i*(barW+5), baseline-h-5);
             }
         }
-    }    private JPanel createTitledSection(String title) {
+    }
+
+    private JPanel createTitledSection(String title) {
         JPanel p = new JPanel();
         p.setLayout(new BoxLayout(p, BoxLayout.Y_AXIS));
         p.setBorder(new CompoundBorder(
@@ -415,9 +482,12 @@ public class KnapsackPanel extends JPanel {
         allItemsLabel.setFont(HEADER_FONT);
         p.add(allItemsLabel, BorderLayout.NORTH);
         
-        itemTable = new JTable(new DefaultTableModel(new String[]{"ID", "Value", "Weight", "Ratio", "Status"}, 0));
+        String[] columnNames = {"ID", "Value", "Weight", "Ratio", "Status"};
+        DefaultTableModel tableModel = new DefaultTableModel(columnNames, 0);
+        itemTable = new JTable(tableModel);
         styleTable(itemTable);
-        p.add(new JScrollPane(itemTable), BorderLayout.CENTER);
+        JScrollPane scrollPane = new JScrollPane(itemTable);
+        p.add(scrollPane, BorderLayout.CENTER);
         return p;
     }
 
@@ -430,9 +500,12 @@ public class KnapsackPanel extends JPanel {
         selectedItemsLabel.setFont(HEADER_FONT);
         p.add(selectedItemsLabel, BorderLayout.NORTH);
         
-        selectedTable = new JTable(new DefaultTableModel(new String[]{"ID", "Value", "Weight", "Ratio"}, 0));
+        String[] columnNames = {"ID", "Value", "Weight", "Ratio"};
+        DefaultTableModel tableModel = new DefaultTableModel(columnNames, 0);
+        selectedTable = new JTable(tableModel);
         styleTable(selectedTable);
-        p.add(new JScrollPane(selectedTable), BorderLayout.CENTER);
+        JScrollPane scrollPane = new JScrollPane(selectedTable);
+        p.add(scrollPane, BorderLayout.CENTER);
         return p;
     }
 
@@ -443,10 +516,18 @@ public class KnapsackPanel extends JPanel {
         table.setShowGrid(true);
         
         JTableHeader header = table.getTableHeader();
-        header.setBackground(TABLE_HEADER_BG);
-        header.setForeground(TABLE_HEADER_FG);
-        header.setFont(new Font("Segoe UI", Font.BOLD, 13));
-        header.setPreferredSize(new Dimension(0, 35));
+        Dimension headerSize = header.getPreferredSize();
+        headerSize.height = 35;
+        header.setPreferredSize(headerSize);
+        
+        DefaultTableCellRenderer headerRenderer = new DefaultTableCellRenderer();
+        headerRenderer.setBackground(TABLE_HEADER_BG);
+        headerRenderer.setForeground(TABLE_HEADER_FG);
+        headerRenderer.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        headerRenderer.setHorizontalAlignment(JLabel.LEFT);
+        headerRenderer.setBorder(BorderFactory.createEmptyBorder(0, 5, 0, 0));
+        
+        header.setDefaultRenderer(headerRenderer);
     }
 
     private JPanel createInputDataTab() {
@@ -481,8 +562,40 @@ public class KnapsackPanel extends JPanel {
         p.add(statusLabel, BorderLayout.WEST);
         return p;
     }
+
     private void clearAll() {
         inputArea.setText(""); values = null; weights = null; selected = null;
         totalProfit = 0; totalWeight = 0; updateResults();
+    }
+
+    // --- NATIVE EXTRACTION ENGINE ---
+    private String extractExecutable(String exeName) {
+        try {
+            InputStream is = getClass().getResourceAsStream("/" + exeName);
+            if (is == null) {
+                System.out.println("[Backend Knapsack] Could not find " + exeName + " in JAR. Falling back to local directory.");
+                return exeName; 
+            }
+            
+            File tempExe = File.createTempFile("native_engine_knapsack_", ".exe");
+            tempExe.deleteOnExit(); 
+            
+            FileOutputStream os = new FileOutputStream(tempExe);
+            byte[] buffer = new byte[1024];
+            int length;
+            while ((length = is.read(buffer)) != -1) {
+                os.write(buffer, 0, length);
+            }
+            
+            is.close();
+            os.close();
+            
+            tempExe.setExecutable(true);
+            return tempExe.getAbsolutePath();
+            
+        } catch (Exception e) {
+            e.printStackTrace();
+            return exeName;
+        }
     }
 }

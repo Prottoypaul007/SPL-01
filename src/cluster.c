@@ -5,7 +5,7 @@
 
 void initClusters(Cluster* clusters, int K, int N) {
     for (int i = 0; i < K; i++) {
-        clusters[i].capacity = N;
+        clusters[i].capacity = N; //prottekta cluster er memory allocation
         clusters[i].cities = (int*)malloc(N * sizeof(int));
         clusters[i].size = 0;
         clusters[i].optimalPath = NULL; 
@@ -16,7 +16,7 @@ Cluster* clusterCities(int** matrix, int N, int K) {
     Cluster* clusters = (Cluster*)malloc(K * sizeof(Cluster));
     initClusters(clusters, K, N);
 
-    // Pick initial random medoids (centers)
+    // Pick initial random medoids centers
     int* isMedoid = (int*)calloc(N, sizeof(int));
     for (int i = 0; i < K; i++) {
         int r;
@@ -33,7 +33,7 @@ Cluster* clusterCities(int** matrix, int N, int K) {
         changed = 0;
         iterations++;
 
-        // Clear previous assignments
+        // previous assignments clear
         for (int i = 0; i < K; i++) clusters[i].size = 0;
 
         // Assign each city to the nearest medoid
@@ -81,7 +81,7 @@ Cluster* clusterCities(int** matrix, int N, int K) {
     return clusters;
 }
 
-void freeClusters(Cluster* clusters, int K) {
+void freeClusters(Cluster* clusters, int K) {//garbage poriskar kore jeno Memory faka hoy. eta na thakle memory failed hbe
     for (int i = 0; i < K; i++) {
         free(clusters[i].cities);
         if (clusters[i].optimalPath != NULL) {
